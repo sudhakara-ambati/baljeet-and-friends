@@ -1,11 +1,11 @@
 import docker
+import evidence
 
 client = docker.from_env()
 
-info = client.info()
-
-container = client.containers.get('test')
-
 for event in client.events(decode=True):
     if event["Action"] == "die":
-        print(f"{event["Actor"]["Attributes"]["name"]} died with code {event["Actor"]["Attributes"]["exitCode"]}")
+        name = event["Actor"]["Attributes"]["name"]
+        code = event["Actor"]["Attributes"]["exitCode"]
+        path = evidence.collect(client, event)
+        print(f"{name} died with code {code} -> {path}")
