@@ -10,9 +10,19 @@ def _run(cmd):
     return r.stdout.strip() if r.returncode == 0 else None
 
 
-def host_state():
+def host_state(event_time=None):
     disk = psutil.disk_usage("/")
     mem = psutil.virtual_memory()
+
+    if event_time is not None:
+        start = int(event_time) - 120
+        end = int(event_time) + 10
+        kernel_cmd = ["journalctl", "-k", "-S", f"@{start}", "-U", f"@{end}"]
+        window = {"start": start, "end": end}
+    else:
+        kernel_cmd = ["journalctl", "-k", "-S", "-2min"]
+        window = None
+
     return {
         "disk": {
             "total_gb": round(disk.total / 1e9, 1),
@@ -26,7 +36,8 @@ def host_state():
         },
         "load_avg": os.getloadavg(),
         "boot_time": psutil.boot_time(),
-        "kernel_messages": _run(["dmesg", "--time-format", "iso"]),
+        "kernel_window": window,
+        "kernel_messages": _run(kernel_cmd),
     }
 
 
@@ -38,7 +49,8 @@ def container_state(container):
 
     return {
         "name": a.get("Name", "").lstrip("/"),
-        "id": a.get("Id", "")[:12],
+        "id": a.get("Id", ""),
+        "short_id": a.get("Id", "")[:12],
         "image": config.get("Image"),
         "exit_code": state.get("ExitCode"),
         "oom_killed": state.get("OOMKilled"),
@@ -78,7 +90,7 @@ def collect(client, event, outdir="incidents"):
         "collected_at": time.time(),
         "container": None,
         "logs": None,
-        "host": host_state(),
+        "host": host_state(event["time"])
     }
 
     container = client.containers.get(container_id)
