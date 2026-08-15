@@ -17,7 +17,12 @@ case "$1" in
     cleanup loop
     docker run -d --restart=always --name broke-loop alpine sh -c \
       "sleep 15; exit 1" ;;
+  mystery)
+    cleanup mystery
+    docker run -d --name broke-mystery nginx
+    sleep 3
+    docker kill --signal=SIGKILL broke-mystery ;;
   clean)
     docker rm -f $(docker ps -aq) 2>/dev/null ;;
-  *) echo "usage: ./chaos.sh {loud|silent|oom|loop|clean}" ;;
+  *) echo "usage: ./chaos.sh {loud|silent|oom|loop|mystery|clean}" ;;
 esac
